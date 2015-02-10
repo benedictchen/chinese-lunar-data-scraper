@@ -7,7 +7,10 @@ var fs = require('fs');
 var startDate = process.argv[2] && process.argv[2].split('-');
 var endDate = process.argv[3] && process.argv[3].split('-');
 if (startDate && endDate) {
-	console.log('Date range: ', startDate, endDate)
+	console.log('Date range: ', startDate, endDate);
+	if (startDate.length > 3 || endDate.length > 3) {
+		throw new Error('Params are messed up...');
+	}
 	var startMonth = startDate[1] > 0 ? startDate[1] - 1 : 0; // JS 0-indexed date.
 	var endMonth = endDate[1] > 0 ? endDate[1] - 1 : 0;
 	startDate = new Date(startDate[0], startMonth, startDate[2])
@@ -33,7 +36,6 @@ var colorToLuckMap = {
 	'#000000': -1 // black is bad luck
 };
 
-
 var sendRequest = function(url, method, data, callback) {
 	var isAsync = false;
 	var request = new XMLHttpRequest();
@@ -54,7 +56,6 @@ jsdom.env({
   scripts: ['http://code.jquery.com/jquery.js'],
   done: function (errors, window) {
   	var document = window.document;
-    
 
 	var getPeriodsInDay = function(year, month, day, callback) {
 		sendRequest('http://www.chinesefortunecalendar.com/TDB/Luckyhours.asp', 'POST', {
@@ -87,24 +88,20 @@ jsdom.env({
 	};
 
 	var getWaitPeriod = function() {
-		return Math.floor(Math.random() * 5000);
+		return Math.floor(Math.random() * 3);
 	};
 
-	var currentCount = 0;
-
-	daysOfYear.forEach(function(date) {
-			console.log(date.getFullYear(), date.getMonth() + 1, date.getDate());
-			getPeriodsInDay(date.getFullYear(), date.getMonth() + 1, date.getDate(), function() {
-					++currentCount;
-					if (currentCount === daysOfYear.length - 1) {
-						// all done here...
-						console.log('All done!');
-					}
-			});
-		var waitPeriod = getWaitPeriod();
-		console.log('Sleeping for ' + waitPeriod)
-		sleep.usleep(waitPeriod);
-	});    
+	var date = daysOfYear.shift();
+	while (date) {
+		getPeriodsInDay(date.getFullYear(), date.getMonth() + 1, date.getDate(), function() {
+			date = daysOfYear.shift();
+			if (!date) {
+				// all done here...
+				console.log('All done!');
+			}
+		});			
+	}
+	
 	console.log(daysOfYear)
   }
 });
