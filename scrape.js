@@ -1,8 +1,7 @@
-var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
-var QS = require('qs');
 var jsdom = require('jsdom');
 var sleep = require('sleep');
 var fs = require('fs');
+var request = require('request');
 
 var startDate = process.argv[2] && process.argv[2].split('-');
 var endDate = process.argv[3] && process.argv[3].split('-');
@@ -36,72 +35,59 @@ var colorToLuckMap = {
 	'#000000': -1 // black is bad luck
 };
 
-var sendRequest = function(url, method, data, callback) {
-	var isAsync = false;
-	var request = new XMLHttpRequest();
-	request.onreadystatechange = function() {
-	  	if (request.readyState == 4 && request.status == 200) {
-	  		console.log()
-		    callback(request.responseText);
-	    }
-	};
-	request.open(method, url + '?' + QS.stringify(data), isAsync);
-	console.log(QS.stringify(data));
-	request.send();
-};
-
-
 jsdom.env({
-  url: 'http://www.chinesefortunecalendar.com/TDB/Luckyhours.asp',
-  scripts: ['http://code.jquery.com/jquery.js'],
-  done: function (errors, window) {
-  	var document = window.document;
+	url: 'http://www.chinesefortunecalendar.com/TDB/Luckyhours.asp',
+	scripts: ['http://code.jquery.com/jquery.js'],
+	done: function (errors, window) {
+		var document = window.document;
 
-	var getPeriodsInDay = function(year, month, day, callback) {
-		sendRequest('http://www.chinesefortunecalendar.com/TDB/Luckyhours.asp', 'POST', {
-			SunYear: year, 
-			SunMonth: month, 
-			SunDay: day
-		}, function(data) {
-			// d is the raw string response of html data.
-			// create a temporary node to work with the data.
-			var rootNode = document.createElement('div');
-			rootNode.innerHTML += data;
-			var table = rootNode.querySelectorAll('table')[2];
-			var rows = table.querySelectorAll('tr');
-			// should have 4 columns per row, representing a 2-hour period each.
-			var allPeriodsPerDay = [];
-			Array.prototype.forEach.call(rows, function(row) {
-				var columns = row.querySelectorAll('td');
-				Array.prototype.forEach.call(columns, function(column) {
-					var color = column.querySelector('font').getAttribute('color');
-					allPeriodsPerDay.push(colorToLuckMap[color]);
+		var getPeriodsInDay = function(year, month, day, callback) {
+			request.post('http://www.chinesefortunecalendar.com/TDB/Luckyhours.asp', {
+				SunYear: year,
+				SunMonth: month,
+				SunDay: day
+			}, function(err, httpResponse, data) {
+				// d is the raw string response of html data.
+				// create a temporary node to work with the data.
+				var rootNode = document.createElement('div');
+				rootNode.innerHTML += data;
+				var table = rootNode.querySelectorAll('table')[2];
+				var rows = table.querySelectorAll('tr');
+				// should have 4 columns per row, representing a 2-hour period each.
+				var allPeriodsPerDay = [];
+				Array.prototype.forEach.call(rows, function(row) {
+					var columns = row.querySelectorAll('td');
+					Array.prototype.forEach.call(columns, function(column) {
+						var color = column.querySelector('font').getAttribute('color');
+						allPeriodsPerDay.push(colorToLuckMap[color]);
+					});
 				});
+				var key = [year, month, day].join('-');
+				periodsPerYear[key] = allPeriodsPerDay;
+				var output = key + ' = ' + allPeriodsPerDay.join(', ') + '\n';
+				console.log(output);
+				fs.appendFileSync('data.txt', output);
+				callback();
 			});
-			var key = [year, month, day].join('-');
-			periodsPerYear[key] = allPeriodsPerDay;
-			var output = key + ' = ' + allPeriodsPerDay.join(', ') + '\n';
-			console.log(output);
-			fs.appendFileSync('data.txt', output);
-			callback();
-		});
-	};
+		};
 
-	var getWaitPeriod = function() {
-		return Math.floor(Math.random() * 3);
-	};
+		var getWaitPeriod = function() {
+			return Math.floor(Math.random() * 3);
+		};
 
-	var date = daysOfYear.shift();
-	while (date) {
-		getPeriodsInDay(date.getFullYear(), date.getMonth() + 1, date.getDate(), function() {
-			date = daysOfYear.shift();
-			if (!date) {
-				// all done here...
-				console.log('All done!');
-			}
-		});			
+		var date = daysOfYear.shift();
+
+		var runProcess = function() {
+			getPeriodsInDay(date.getFullYear(), date.getMonth() + 1, date.getDate(), function() {
+				date = daysOfYear.shift();
+				if (!date) {
+					// all done here...
+					console.log('All done!');
+					return;
+				}
+				runProcess();
+			});
+		};
+		runProcess();
 	}
-	
-	console.log(daysOfYear)
-  }
 });

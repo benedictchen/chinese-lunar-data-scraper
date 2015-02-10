@@ -21,6 +21,7 @@
 			SunMonth: month, 
 			SunDay: day
 		}, function(data) {
+			data = data.replace(/(href|src|img)/g, 'bullshit');
 			// d is the raw string response of html data.
 			// create a temporary node to work with the data.
 			var rootNode = document.createElement('div');
@@ -34,20 +35,19 @@
 				Array.prototype.forEach.call(columns, function(column) {
 					var color = column.querySelector('font').getAttribute('color');
 					allPeriodsPerDay.push(colorToLuckMap[color]);
-					console.log(allPeriodsPerDay);
 				});
 			});
+			delete rootNode;
 			var key = [year, month, day].join('-');
 			periodsPerYear[key] = allPeriodsPerDay;
+			console.log(key + ' --> '+ allPeriodsPerDay);
 			callback();
 		});
 	};
 
-	
-
 	$(function() {
 		var getWaitPeriod = function() {
-			return Math.floor(Math.random() * 5000);
+			return Math.floor(Math.random() * 10000);
 		};
 		var currentCount = 0;
 		daysOfYear.forEach(function(date) {
@@ -58,7 +58,7 @@
 						if (currentCount === daysOfYear.length - 1) {
 							// all done here...
 							document.body.innerHTML += '<pre>' +
-								JSON.stringify(periodsPerYear, undefined, 4);
+								JSON.stringify(periodsPerYear).replace(/],/g, "],\n");
 								+ '</pre>';
 						}
 				});
