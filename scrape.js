@@ -4,12 +4,25 @@ var jsdom = require('jsdom');
 var sleep = require('sleep');
 var fs = require('fs');
 
+var startDate = process.argv[2] && process.argv[2].split('-');
+var endDate = process.argv[3] && process.argv[3].split('-');
+if (startDate && endDate) {
+	console.log('Date range: ', startDate, endDate)
+	var startMonth = startDate[1] > 0 ? startDate[1] - 1 : 0; // JS 0-indexed date.
+	var endMonth = endDate[1] > 0 ? endDate[1] - 1 : 0;
+	startDate = new Date(startDate[0], startMonth, startDate[2])
+	endDate = new Date(endDate[0], endMonth, endDate[2])
+} else {
+	startDate = new Date(2015, 0, 1);
+	endDate = new Date(2050, 0 , 1);
+}
+
 var periodsPerYear = {}; // This stores all our data.
 
 // Get all the days we want.
-var endDate = new Date(2050, 0 , 1);
+
 var daysOfYear = [];
-for (var d = new Date(2015, 0, 1); d <= endDate; d.setDate(d.getDate() + 1)) {
+for (var d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
     daysOfYear.push(new Date(d));
 }
 
@@ -95,13 +108,3 @@ jsdom.env({
 	console.log(daysOfYear)
   }
 });
-
-
-
-
-
-
-
-
-
-
